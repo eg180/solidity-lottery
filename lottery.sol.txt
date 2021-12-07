@@ -1,0 +1,79 @@
+//SPDX-License-Identifier: GPL-3.0
+
+ 
+pragma solidity >=0.5.0 <0.9.0;
+
+contract Lottery {
+    address payable[] public players;
+    address public manager;
+    
+
+
+    // set the manager to the address that deploys the contract in the constructor
+    // the constructor is called only once upon creation
+    constructor() {
+        manager = msg.sender;
+    }
+
+
+    // a contract can only have one receive function declared with this syntax. No arguments. No colon;
+    // notice that a value without a suffix is assumed to be wei.
+    // 100000000000000000 = 0.1 ether <-- with the suffix
+    receive() external payable{
+        // any code before the below line will still consume gas if fails.
+
+        require(msg.sender != manager); // Prevents manager from participating
+        require(msg.value == 0.01 ether); // minimum amount required to play
+        players.push(payable(msg.sender));
+    }
+
+    // The below function returns the contract's balance in wei.
+    
+
+    function getBalance() public view returns(uint) {
+        // only the manager can see the balance of the contract
+        require(msg.sender == manager);
+        return address(this).balance;
+    }
+
+    function random() public view returns(uint){
+        // on a live deploy with high stakes, use the chainlink vrf solution to generate random numbers.
+        return uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, players.length)));
+
+    }
+
+    // Declare a winner
+
+    function pickWinner() public {
+        // ensure that only the manager pick the winner.
+        require(msg.sender == manager);
+        require(players.length >= 3);
+
+
+        uint r = random();
+
+        address payable winner;
+
+        // now select the index of the winner using the modulus of the player length
+        uint index = r % players.length;
+        uint balance = getBalance();
+        winner = players[index];
+
+
+
+        // recall that the winner's address was declared as payable upon receiving ether.
+        winner.transfer(balance);
+
+
+        // reset the lottery for another round. Namely, reset the players;
+        players = new address payable[](0);
+
+
+    
+      
+    }
+
+
+
+
+}
